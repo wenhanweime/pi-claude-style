@@ -63,15 +63,81 @@ function revertLeaves(target, changes, warnings) {
     else delete parent[key];
   }
 }
+function presetSpecs(agent) {
+  // CC 1.x renamed its config. Preserve old custom options without letting the
+  // dependency's import-time migration delete a file owned by an earlier preset.
+  const cc = fs.existsSync(path.join(agent, 'pi-cc-extensions.json'))
+    ? preset.ccStyle
+    : { ...readJson(path.join(agent, 'claude-code-style.json')), ...preset.ccStyle };
+  return [
+    ['settings.json', preset.settings],
+    ['configs/footer.json', preset.footer],
+    ['pi-cc-extensions.json', cc],
+  ];
+}
+
+export function upgradePreset(agent, packageRoot, previous, { now = Date.now() } = {}) {
+  const next = structuredClone(previous);
+  const plans = [];
+  for (const [rel, patch] of presetSpecs(agent)) {
+    const destination = path.join(agent, rel);
+    const beforeRaw = read(destination);
+    const current = readJson(destination);
+    let record = next.files.find(file => file.rel === rel);
+    if (!record) {
+      record = { rel, existed: beforeRaw !== null, changes: [] };
+      next.files.push(record);
+    }
+    const updates = [];
+    mergeLeaves(current, patch, updates);
+    for (const change of updates) {
+      const old = record.changes.find(item => equal(item.keys, change.keys));
+      if (old && !equal(change.before, old.after)) {
+        // A user's later customization wins; keep its original rollback record.
+        let parent = current;
+        for (const key of change.keys.slice(0, -1)) parent = parent[key];
+        if (change.existed) parent[change.keys.at(-1)] = change.before;
+        else delete parent[change.keys.at(-1)];
+      } else if (old) old.after = change.after;
+      else record.changes.push(change);
+    }
+    if (rel === 'settings.json') {
+      assertPackages(current);
+      current.packages = (current.packages ?? []).filter(p => p !== previous.packageRoot && p !== packageRoot);
+      current.packages.push(packageRoot);
+    }
+    plans.push({ rel, destination, beforeRaw, current });
+  }
+  const upgradeBackup = path.join(previous.backup, 'upgrades', String(now));
+  fs.mkdirSync(upgradeBackup, { recursive: true, mode: 0o700 });
+  writeJson(path.join(upgradeBackup, 'state.json'), previous);
+  for (const plan of plans) if (plan.beforeRaw !== null) atomic(path.join(upgradeBackup, plan.rel), plan.beforeRaw);
+  next.version = META.version;
+  next.packageRoot = packageRoot;
+  next.installedPackages = previous.installedPackages.map(p => p === previous.packageRoot ? packageRoot : p);
+  next.upgradedAt = now;
+  try {
+    for (const plan of plans) writeJson(plan.destination, plan.current);
+    writeJson(statePath(agent), next);
+  } catch (error) {
+    for (const plan of plans) {
+      if (plan.beforeRaw === null) fs.rmSync(plan.destination, { force: true });
+      else atomic(plan.destination, plan.beforeRaw);
+    }
+    writeJson(statePath(agent), previous);
+    throw error;
+  }
+  return { alreadyInstalled: false, upgraded: true, state: next };
+}
 export function applyPreset(agent, packageRoot, { now = Date.now() } = {}) {
   agent = path.resolve(agent); packageRoot = path.resolve(packageRoot);
   const stateFile = statePath(agent);
-  if (fs.existsSync(stateFile)) return { alreadyInstalled: true, state: readJson(stateFile) };
-  const specs = [
-    ['settings.json', preset.settings],
-    ['configs/footer.json', preset.footer],
-    ['claude-code-style.json', preset.ccStyle],
-  ];
+  if (fs.existsSync(stateFile)) {
+    const state = readJson(stateFile);
+    if (state.version === META.version) return { alreadyInstalled: true, state };
+    return upgradePreset(agent, packageRoot, state, { now });
+  }
+  const specs = presetSpecs(agent);
   // Parse and validate every destination before modifying any user configuration.
   const files = specs.map(([rel, patch]) => {
     const destination = path.join(agent, rel);
@@ -183,15 +249,15 @@ export function cli(args = process.argv.slice(2)) {
       for (const warning of result.warnings) console.warn(warning);
       return;
     }
-    if (fs.existsSync(statePath(agent))) { console.log('Style already installed. No configuration changed. Uninstall before changing versions.'); return; }
+    if (fs.existsSync(statePath(agent)) && readJson(statePath(agent)).version === META.version) { console.log('Style already installed. No configuration changed.'); return; }
     let check = spawnSync('pi', ['--version'], { encoding: 'utf8', timeout: 20_000 });
     if (check.error?.code === 'ENOENT') {
-      run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '--global', '@earendil-works/pi-coding-agent@0.84.3', '--no-audit', '--no-fund']);
+      run(process.platform === 'win32' ? 'npm.cmd' : 'npm', ['install', '--global', '@earendil-works/pi-coding-agent@1.5.0', '--no-audit', '--no-fund']);
       check = spawnSync('pi', ['--version'], { encoding: 'utf8', timeout: 20_000 });
     }
-    if (check.status !== 0 || !/\b0\.84\.[1-9]\d*\b/.test(check.stdout || '')) throw new Error('Requires Pi 0.84.1–0.84.x (tested 0.84.3). Existing Pi was not replaced.');
+    if (check.status !== 0 || !/\b1\.5\.\d+\b/.test(check.stdout || '')) throw new Error('Requires Pi 1.5.x (tested 1.5.0). Existing Pi was not replaced.');
     // Fail on malformed destinations before downloading dependencies.
-    for (const rel of ['settings.json', 'configs/footer.json', 'claude-code-style.json']) readJson(path.join(agent, rel));
+    for (const rel of ['settings.json', 'configs/footer.json', 'pi-cc-extensions.json']) readJson(path.join(agent, rel));
     const destination = path.join(base, META.version);
     if (path.resolve(SOURCE) !== path.resolve(destination)) {
       fs.cpSync(SOURCE, destination, { recursive: true, filter: p => !['node_modules', '.git', 'tests', '.github'].includes(path.basename(p)) });
@@ -202,6 +268,6 @@ export function cli(args = process.argv.slice(2)) {
     console.log(`Uninstall: node "${path.join(destination, 'scripts/setup.mjs')}" uninstall`);
   } finally { fs.rmdirSync(lock); }
 }
-if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
+if (process.argv[1] && fs.existsSync(process.argv[1]) && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try { cli(); } catch (error) { console.error(`pi-claude-style: ${error.message}`); process.exitCode = 1; }
 }

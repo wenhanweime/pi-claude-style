@@ -18,9 +18,9 @@ test('fresh install configures all UI layers and clean uninstall removes its con
   assert.equal(get('settings.json').theme, 'claude-warm');
   assert.deepEqual(get('settings.json').packages, [root]);
   assert.equal(get('configs/footer.json').colors.model, '#D77757');
-  assert.equal(get('claude-code-style.json').diffViewMode, 'auto');
+  assert.equal(get('pi-cc-extensions.json').diffViewMode, 'auto');
   uninstallPreset(agent);
-  for (const rel of ['settings.json', 'configs/footer.json', 'claude-code-style.json']) assert.equal(fs.existsSync(path.join(agent, rel)), false);
+  for (const rel of ['settings.json', 'configs/footer.json', 'pi-cc-extensions.json']) assert.equal(fs.existsSync(path.join(agent, rel)), false);
 });
 
 test('merges UI settings and preserves model, credentials, unrelated plugins and footer layout', () => {
@@ -53,7 +53,7 @@ test('malformed secondary config fails without partially editing settings', () =
   put('settings.json', '{ "theme": "dark" }'); put('configs/footer.json', '{broken');
   assert.throws(() => applyPreset(agent, '/test/package'));
   assert.equal(fs.readFileSync(path.join(agent, 'settings.json'), 'utf8'), '{ "theme": "dark" }');
-  assert.equal(fs.existsSync(path.join(agent, 'claude-code-style.json')), false);
+  assert.equal(fs.existsSync(path.join(agent, 'pi-cc-extensions.json')), false);
 });
 
 test('invalid nested settings fail before writes', () => {
@@ -84,7 +84,7 @@ test('uninstall preserves later user changes and packages added after installati
 
 test('malformed config during uninstall preserves installed state for recovery', () => {
   applyPreset(agent, '/test/package'); const settings = get('settings.json');
-  put('claude-code-style.json', 'broken');
+  put('pi-cc-extensions.json', 'broken');
   assert.throws(() => uninstallPreset(agent));
   assert.deepEqual(get('settings.json'), settings);
   assert.ok(fs.existsSync(path.join(agent, 'styles/pi-claude-style/state.json')));
@@ -100,4 +100,66 @@ test('CLI executes when invoked through a symlinked source directory', () => {
   });
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Style is not installed/);
+});
+
+function emulateV012(root) {
+  applyPreset(agent, root, { now: 1 });
+  const legacy = get('pi-cc-extensions.json');
+  delete legacy.enableEditorPrefix; delete legacy.enableCustomFooter;
+  put('claude-code-style.json', legacy);
+  fs.rmSync(path.join(agent, 'pi-cc-extensions.json'));
+  const state = get('styles/pi-claude-style/state.json');
+  state.version = '0.1.2';
+  const record = state.files.find(f => f.rel === 'pi-cc-extensions.json');
+  record.rel = 'claude-code-style.json';
+  record.changes = record.changes.filter(c => !['enableEditorPrefix', 'enableCustomFooter'].includes(c.keys[0]));
+  put('styles/pi-claude-style/state.json', state);
+  return state;
+}
+
+test('upgrading 0.1.2 retains the first backup and uninstall restores the pre-install UI', () => {
+  put('settings.json', { theme: 'dark', defaultModel: 'mine', packages: ['npm:pi-cc-extensions@0.8.67'] });
+  const previous = emulateV012('/test/old-package');
+  const result = applyPreset(agent, '/test/new-package', { now: 2 });
+  assert.equal(result.upgraded, true);
+  assert.equal(result.state.backup, previous.backup);
+  assert.deepEqual(get('settings.json').packages, ['/test/new-package']);
+  assert.equal(get('pi-cc-extensions.json').enableEditorPrefix, false);
+  assert.equal(get('pi-cc-extensions.json').enableCustomFooter, false);
+  uninstallPreset(agent);
+  assert.deepEqual(get('settings.json'), { theme: 'dark', defaultModel: 'mine', packages: ['npm:pi-cc-extensions@0.8.67'] });
+  assert.equal(fs.existsSync(path.join(agent, 'pi-cc-extensions.json')), false);
+  assert.equal(fs.existsSync(path.join(agent, 'claude-code-style.json')), false);
+});
+
+test('upgrade keeps user edits and plugins added since the first install', () => {
+  put('settings.json', { theme: 'dark', packages: ['npm:other'] });
+  emulateV012('/test/old-package');
+  const settings = get('settings.json'); settings.theme = 'custom'; settings.packages.push('npm:later'); put('settings.json', settings);
+  applyPreset(agent, '/test/new-package');
+  assert.equal(get('settings.json').theme, 'custom');
+  uninstallPreset(agent);
+  assert.equal(get('settings.json').theme, 'custom');
+  assert.deepEqual(new Set(get('settings.json').packages), new Set(['npm:other', 'npm:later']));
+});
+
+test('invalid new config aborts upgrade without modifying the old installation', () => {
+  emulateV012('/test/old-package');
+  const state = get('styles/pi-claude-style/state.json'); const settings = get('settings.json');
+  put('pi-cc-extensions.json', '{invalid');
+  assert.throws(() => applyPreset(agent, '/test/new-package'));
+  assert.deepEqual(get('settings.json'), settings);
+  assert.deepEqual(get('styles/pi-claude-style/state.json'), state);
+});
+
+test('legacy CC preferences are copied without deleting the original config', () => {
+  const legacy = { enableAliases: false, previewLines: 8 };
+  put('claude-code-style.json', legacy);
+  applyPreset(agent, '/test/package');
+  assert.equal(get('pi-cc-extensions.json').enableAliases, false);
+  assert.equal(get('pi-cc-extensions.json').previewLines, 3);
+  assert.deepEqual(get('claude-code-style.json'), legacy);
+  uninstallPreset(agent);
+  assert.equal(fs.existsSync(path.join(agent, 'pi-cc-extensions.json')), false);
+  assert.deepEqual(get('claude-code-style.json'), legacy);
 });

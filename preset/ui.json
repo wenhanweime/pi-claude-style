@@ -21,6 +21,8 @@
     "diffWordWrap": true,
     "expandedPreviewMaxLines": 40,
     "previewLines": 3,
-    "animationIntervalMs": 90
+    "animationIntervalMs": 90,
+    "enableEditorPrefix": false,
+    "enableCustomFooter": false
   }
 }

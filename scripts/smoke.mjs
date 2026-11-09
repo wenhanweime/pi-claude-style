@@ -12,14 +12,16 @@ const piRoot = process.env.PI_RUNTIME_PATH || path.join(npm.stdout.trim(), '@ear
 const agent = fs.mkdtempSync(path.join(os.tmpdir(), 'pi-style-smoke-'));
 process.env.PI_CODING_AGENT_DIR = agent;
 try {
+  const { applyPreset } = await import('./setup.mjs');
+  applyPreset(agent, root);
   const { loadExtensions } = await import(pathToFileURL(path.join(piRoot, 'dist/core/extensions/loader.js')));
   const result = await loadExtensions([path.join(root, 'extensions/index.ts')], agent);
   assert.deepEqual(result.errors, []);
   assert.equal(result.extensions.length, 1);
   const { loadThemeFromPath } = await import(pathToFileURL(path.join(piRoot, 'dist/modes/interactive/theme/theme.js')));
+  const { validateThemeJson } = await import(pathToFileURL(path.join(piRoot, 'dist/modes/interactive/theme/theme-schema.js')));
+  validateThemeJson('claude-warm', JSON.parse(fs.readFileSync(path.join(root, 'themes/claude-warm.json'), 'utf8')));
   const theme = loadThemeFromPath(path.join(root, 'themes/claude-warm.json'));
   assert.ok(theme.fg('accent', 'warm').includes('warm'));
-  const { applyPreset } = await import('./setup.mjs');
-  applyPreset(agent, root);
   console.log('PASS: Pi loaded the theme and the complete CC → Comfy → footer extension stack. No model request sent.');
 } finally { fs.rmSync(agent, { recursive: true, force: true }); }

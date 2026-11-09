@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Target Pi 1.5.x; install Pi 1.5.0 on machines without Pi.
+- Upgrade pi-cc-extensions to 1.0.16 and disable its competing editor/footer.
+- Vendor the MIT Comfy 0.3.1 UI modules to maintain compatibility without the upstream 0.84 peer restriction; skip non-UI sessions.
+- Write pi-cc-extensions.json and preserve legacy configuration files/options.
+- Upgrade 0.1.x in place while retaining the first backup and later user edits/plugins.
+- Validate the Pi 1.5 theme schema and test the real TUI in a disposable PTY.
+
 ## 0.1.2
 
 - Preserve all upstream transitive lockfile versions while updating this package version.
