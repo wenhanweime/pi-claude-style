@@ -9,7 +9,7 @@
 需要 Node.js **22.19.0+**、npm、curl 和 tar。macOS / Linux 可直接执行：
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/wenhanweime/pi-claude-style/v0.1.1/install.sh | sh
+curl -fsSL https://raw.githubusercontent.com/wenhanweime/pi-claude-style/v0.1.2/install.sh | sh
 ```
 
 安装完成后重启 Pi。没有安装 Pi 时，安装器会安装 `@earendil-works/pi-coding-agent@0.84.3`；已有 Pi 则检查兼容版本，不自动降级。当前支持 **Pi 0.84.1–0.84.x**，实际验证版本为 **0.84.3**。不支持的版本会停止并说明原因。
@@ -17,7 +17,7 @@ curl -fsSL https://raw.githubusercontent.com/wenhanweime/pi-claude-style/v0.1.1/
 如希望先查看源码：
 
 ```sh
-git clone --branch v0.1.1 --depth 1 https://github.com/wenhanweime/pi-claude-style.git
+git clone --branch v0.1.2 --depth 1 https://github.com/wenhanweime/pi-claude-style.git
 cd pi-claude-style
 node scripts/setup.mjs install
 ```
@@ -62,7 +62,7 @@ Windows 请在 WSL 中使用上面的安装命令。原生 Windows 安装暂未�
 - `settings.json`：合并上述 UI 设置，注册一个本地样式包路径。
 - `configs/footer.json`：合并模型和 high thinking 的暖橙色。
 - `claude-code-style.json`：合并固定的消息/diff 样式设置。
-- `styles/pi-claude-style/0.1.1/`：固定版本的运行代码和依赖。
+- `styles/pi-claude-style/0.1.2/`：固定版本的运行代码和依赖。
 - `styles/pi-claude-style/backups/<timestamp>/`：修改前的配置备份。
 
 模型、认证、权限、工具、MCP 和其他不相关设置保持原值。安装包不包含任何源机凭据、provider、会话、技能或宿主集成。
@@ -74,13 +74,13 @@ Windows 请在 WSL 中使用上面的安装命令。原生 Windows 安装暂未�
 ## 卸载与恢复
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/wenhanweime/pi-claude-style/v0.1.1/install.sh | sh -s -- uninstall
+curl -fsSL https://raw.githubusercontent.com/wenhanweime/pi-claude-style/v0.1.2/install.sh | sh -s -- uninstall
 ```
 
 也可执行本地安装副本：
 
 ```sh
-node "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/styles/pi-claude-style/0.1.1/scripts/setup.mjs" uninstall
+node "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/styles/pi-claude-style/0.1.2/scripts/setup.mjs" uninstall
 ```
 
 重启 Pi 后生效。卸载移除样式包注册，并恢复仍与预设相同的 UI 字段；安装后手动修改过的字段与新加入的插件会保留并提示。备份与运行代码保留在磁盘，方便恢复和检查。
@@ -88,7 +88,7 @@ node "${PI_CODING_AGENT_DIR:-$HOME/.pi/agent}/styles/pi-claude-style/0.1.1/scrip
 ## 原生 Pi 包安装（手动设置）
 
 ```sh
-pi install git:github.com/wenhanweime/pi-claude-style@v0.1.1
+pi install git:github.com/wenhanweime/pi-claude-style@v0.1.2
 ```
 
 这条命令只注册扩展和主题资源，不自动应用 UI 设置。需要手动选择 `claude-warm` 并合并 [`preset/ui.json`](preset/ui.json) 中的设置；已有 CC、Comfy 或 footer 要先禁用以免重复。推荐使用上面的一键安装器。

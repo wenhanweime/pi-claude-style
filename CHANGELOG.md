@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.2
+
+- Preserve all upstream transitive lockfile versions while updating this package version.
+- Verify dependency installation with an empty npm cache before release.
+
 ## 0.1.1
 
 - Fix CLI entrypoint detection when macOS temporary paths resolve through `/var` → `/private/var`, or when source is invoked through a symlink.
