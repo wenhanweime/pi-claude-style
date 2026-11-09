@@ -1,0 +1,26 @@
+{
+  "settings": {
+    "theme": "claude-warm",
+    "quietStartup": true,
+    "clearOnStart": true,
+    "editorPaddingX": 1
+  },
+  "footer": {
+    "colors": {
+      "model": "#D77757",
+      "thinkingHigh": "#D77757"
+    }
+  },
+  "ccStyle": {
+    "mode": "on",
+    "diffViewMode": "auto",
+    "diffIndicatorMode": "bars",
+    "diffSplitMinWidth": 120,
+    "editDiffCollapsedLines": 24,
+    "writeDiffCollapsedLines": 0,
+    "diffWordWrap": true,
+    "expandedPreviewMaxLines": 40,
+    "previewLines": 3,
+    "animationIntervalMs": 90
+  }
+}

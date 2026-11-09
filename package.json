@@ -1,0 +1,65 @@
+{
+  "name": "pi-claude-style",
+  "version": "0.1.0",
+  "description": "One-command warm Claude-style UI preset for Pi: theme, renderers, comfortable input, and a two-row footer.",
+  "type": "module",
+  "license": "MIT",
+  "author": "wenhanweime",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wenhanweime/pi-claude-style.git"
+  },
+  "keywords": [
+    "pi-package",
+    "pi-extension",
+    "pi-theme",
+    "claude-code"
+  ],
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "install:style": "node scripts/setup.mjs install",
+    "uninstall:style": "node scripts/setup.mjs uninstall"
+  },
+  "files": [
+    "extensions",
+    "themes",
+    "vendor",
+    "preset",
+    "scripts",
+    "install.sh",
+    "README.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md"
+  ],
+  "dependencies": {
+    "pi-cc-extensions": "0.8.67",
+    "pi-comfy-ui": "0.3.1"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.84.1 <0.85.0",
+    "@earendil-works/pi-tui": ">=0.84.1 <0.85.0",
+    "@earendil-works/pi-ai": ">=0.84.1 <0.85.0"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    },
+    "@earendil-works/pi-tui": {
+      "optional": true
+    },
+    "@earendil-works/pi-ai": {
+      "optional": true
+    }
+  },
+  "pi": {
+    "extensions": [
+      "./extensions/index.ts"
+    ],
+    "themes": [
+      "./themes/claude-warm.json"
+    ]
+  }
+}
