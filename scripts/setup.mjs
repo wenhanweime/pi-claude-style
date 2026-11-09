@@ -202,6 +202,6 @@ export function cli(args = process.argv.slice(2)) {
     console.log(`Uninstall: node "${path.join(destination, 'scripts/setup.mjs')}" uninstall`);
   } finally { fs.rmdirSync(lock); }
 }
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && fs.realpathSync(process.argv[1]) === fs.realpathSync(fileURLToPath(import.meta.url))) {
   try { cli(); } catch (error) { console.error(`pi-claude-style: ${error.message}`); process.exitCode = 1; }
 }

@@ -1,6 +1,6 @@
 {
   "name": "pi-claude-style",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "One-command warm Claude-style UI preset for Pi: theme, renderers, comfortable input, and a two-row footer.",
   "type": "module",
   "license": "MIT",

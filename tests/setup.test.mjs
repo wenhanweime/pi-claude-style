@@ -3,6 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { applyPreset, uninstallPreset } from '../scripts/setup.mjs';
 let agent;
 const put = (rel, value) => { const p = path.join(agent, rel); fs.mkdirSync(path.dirname(p), { recursive: true }); fs.writeFileSync(p, typeof value === 'string' ? value : JSON.stringify(value)); };
@@ -86,4 +88,16 @@ test('malformed config during uninstall preserves installed state for recovery',
   assert.throws(() => uninstallPreset(agent));
   assert.deepEqual(get('settings.json'), settings);
   assert.ok(fs.existsSync(path.join(agent, 'styles/pi-claude-style/state.json')));
+});
+
+// macOS /var -> /private/var is a symlink; downloaded installers must still run.
+test('CLI executes when invoked through a symlinked source directory', () => {
+  const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+  const linkedRoot = path.join(agent, 'linked-source');
+  fs.symlinkSync(root, linkedRoot, 'dir');
+  const result = spawnSync(process.execPath, [path.join(linkedRoot, 'scripts/setup.mjs'), 'uninstall'], {
+    env: { ...process.env, PI_CODING_AGENT_DIR: path.join(agent, 'isolated-agent') }, encoding: 'utf8', timeout: 10000,
+  });
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /Style is not installed/);
 });

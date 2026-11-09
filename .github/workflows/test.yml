@@ -16,3 +16,10 @@ jobs:
       - run: npm test
       - run: npm install --global @earendil-works/pi-coding-agent@0.84.3 --no-audit --no-fund
       - run: node scripts/smoke.mjs
+      - name: Install and restore in an isolated agent directory
+        shell: bash
+        run: |
+          export PI_CODING_AGENT_DIR="$(mktemp -d)"
+          node scripts/setup.mjs install
+          node -e 'const fs=require("node:fs"); const p=process.env.PI_CODING_AGENT_DIR+"/settings.json"; if (JSON.parse(fs.readFileSync(p)).theme !== "claude-warm") process.exit(1)';
+          node scripts/setup.mjs uninstall
